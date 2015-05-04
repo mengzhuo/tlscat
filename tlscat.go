@@ -31,6 +31,11 @@ func main() {
 
 func ClientMode() {
 
+	if len(os.Args) < 3 {
+		fmt.Printf("Args not enough")
+		os.Exit(2)
+	}
+
 	addr := os.Args[1]
 	port := os.Args[2]
 
@@ -39,17 +44,26 @@ func ClientMode() {
 		fmt.Printf("Can not connect to %s:%s due to %s", addr, port, err)
 		os.Exit(1)
 	}
-	go func(conn net.Conn) {
+	go func() {
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			buf := scanner.Bytes()
+			buf = append(buf, []byte("\n")...)
+			conn.Write(buf)
+		}
+		if err := scanner.Err(); err != nil {
+			fmt.Printf("Scanner end:%s\n", err)
+		}
+	}()
+	for {
 		b := make([]byte, 2048)
-		conn.Read(b)
-		fmt.Println(b)
-	}(conn)
-
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		conn.Write(scanner.Bytes())
+		n, _ := conn.Read(b)
+		if n != 0 {
+			fmt.Print(string(b))
+		} else {
+			break
+		}
 	}
-
 }
 
 func ServerMode() {
