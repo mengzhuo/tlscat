@@ -18,6 +18,7 @@ var (
 	listenPort        = flag.Int("l", 65536, "The port to listen")
 	certificationFile = flag.String("c", "", "Certification file")
 	privateKeyFile    = flag.String("k", "", "Private Key file")
+	verbose           = flag.Bool("v", false, "Verbose Output")
 )
 
 func main() {
@@ -31,24 +32,30 @@ func main() {
 
 func ClientMode() {
 
-	if len(os.Args) < 3 {
-		fmt.Printf("Args not enough")
+	args := flag.Args()
+	if len(args) < 2 {
+		fmt.Printf("Not enough for address and port, only get %s", args)
 		os.Exit(2)
 	}
-
-	addr := os.Args[1]
-	port := os.Args[2]
+	addr := args[0]
+	port := args[1]
+	if *verbose {
+		fmt.Printf("Connecting %s:%s\n", addr, port)
+	}
 
 	conn, err := tls.Dial("tcp", fmt.Sprintf("%s:%s", addr, port), &tls.Config{})
 	if err != nil {
 		fmt.Printf("Can not connect to %s:%s due to %s", addr, port, err)
-		os.Exit(1)
+		panic(err)
 	}
 	go func() {
 		scanner := bufio.NewScanner(os.Stdin)
 		for scanner.Scan() {
 			buf := scanner.Bytes()
 			buf = append(buf, []byte("\n")...)
+			if *verbose {
+				fmt.Printf("Sending: %x\n", buf)
+			}
 			conn.Write(buf)
 		}
 		if err := scanner.Err(); err != nil {
